@@ -9,16 +9,23 @@ Running several Node / Python projects at once and forgetting which port belongs
 
 ## Install
 
-Try without installing anything:
+### With a coding agent
 
-```sh
-npx portwatchx
+Send your coding agent (Claude Code, Codex, Cursor, Cline, etc.) this repo and say **"install this"**:
+
+```
+https://github.com/isS/portwatchx
 ```
 
-Install globally:
+The agent will clone, run `npm install && npm run build`, and verify with `portwatchx ls`. Takes about 30 seconds.
+
+### Manually
 
 ```sh
-npm i -g portwatchx
+git clone https://github.com/isS/portwatchx
+cd portwatchx
+npm install && npm run build
+npm link            # optional: makes `portwatchx` available globally
 ```
 
 ## Usage
