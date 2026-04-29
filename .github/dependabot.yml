@@ -13,6 +13,9 @@ updates:
     commit-message:
       prefix: chore
       include: scope
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       dev-dependencies:
         dependency-type: development
@@ -30,3 +33,6 @@ updates:
       - ci
     commit-message:
       prefix: ci
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
