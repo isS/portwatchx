@@ -1,0 +1,39 @@
+name: Feature request
+description: Suggest an idea that fits the project's scope.
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before opening a feature request, please check [CONTRIBUTING.md](../blob/main/CONTRIBUTING.md#scope) to see if the idea is in scope. portwatchx intentionally stays small.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve
+      description: What are you trying to do, and what's getting in the way?
+      placeholder: When I have several Next.js projects running, I want to...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      placeholder: Add a column that shows...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: This is in scope per CONTRIBUTING.md (I've read it).
+          required: true

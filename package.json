@@ -1,0 +1,76 @@
+{
+  "name": "portwatchx",
+  "version": "0.1.0",
+  "description": "See which local dev project is using each TCP port on your machine.",
+  "keywords": [
+    "port",
+    "ports",
+    "lsof",
+    "dashboard",
+    "developer-tools",
+    "cli",
+    "macos"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "author": "PortwatchX contributors",
+  "homepage": "https://github.com/isS/portwatchx#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/isS/portwatchx.git"
+  },
+  "bugs": {
+    "url": "https://github.com/isS/portwatchx/issues"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "bin": {
+    "portwatchx": "./dist/cli.js"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "scripts": {
+    "build": "npm run build:ui && tsc",
+    "build:ui": "tsc -p tsconfig.ui.json && vite build",
+    "dev": "tsx src/cli.ts",
+    "dev:ui": "vite",
+    "test": "node --import tsx --test test/cli-guard.test.ts test/scanner.test.ts test/server.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "autoprefixer": "^10.5.0",
+    "postcss": "^8.5.10",
+    "tailwindcss": "^3.4.19",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.10"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.0.0",
+    "@radix-ui/react-popover": "^1.1.15",
+    "@radix-ui/react-tooltip": "^1.2.8",
+    "chalk": "^5.6.2",
+    "cli-table3": "^0.6.5",
+    "commander": "^14.0.3",
+    "hono": "^4.12.15",
+    "lucide-react": "^1.11.0",
+    "next-themes": "^0.4.6",
+    "open": "^11.0.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "systray2": "^2.1.4"
+  }
+}

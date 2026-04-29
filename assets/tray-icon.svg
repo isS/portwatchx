@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Mario-style pipe silhouette: wide rim on top, narrower body below.
+       Built from <rect> primitives (qlmanage renders these reliably; complex paths trip it up).
+       Used as a macOS template icon (black on transparent → auto-tints to light/dark menubar). -->
+  <rect x="6"  y="10" width="52" height="14" fill="black"/>
+  <rect x="14" y="24" width="36" height="32" fill="black"/>
+</svg>

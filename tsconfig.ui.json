@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "rootDir": "ui",
+    "outDir": "dist-ui-types",
+    "noEmit": true,
+    "allowImportingTsExtensions": true
+  },
+  "include": ["ui/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

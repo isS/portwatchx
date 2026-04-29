@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>portwatchx</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2310b981'/%3E%3Ctext x='17' y='24' font-family='system-ui,-apple-system,sans-serif' font-size='22' font-weight='800' fill='white' text-anchor='middle'%3EP%3C/text%3E%3C/svg%3E" />
+    <script>
+      // No-flash theme bootstrap (matches next-themes defaults: localStorage key 'theme', system fallback)
+      (function () {
+        try {
+          var t = localStorage.getItem('theme') || 'system'
+          var dark = t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)
+          if (dark) document.documentElement.classList.add('dark')
+        } catch (_) {}
+      })()
+    </script>
+    <link rel="stylesheet" href="./index.css" />
+  </head>
+  <body class="bg-neutral-50 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
+    <div id="root"></div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>
