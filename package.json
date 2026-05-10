@@ -69,7 +69,7 @@
     "lucide-react": "^1.11.0",
     "next-themes": "^0.4.6",
     "open": "^11.0.0",
-    "react": "^19.2.5",
+    "react": "^19.2.6",
     "react-dom": "^19.2.5",
     "systray2": "^2.1.4"
   }
