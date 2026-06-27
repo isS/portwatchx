@@ -6,6 +6,7 @@ import Table from 'cli-table3'
 import chalk from 'chalk'
 import { startServer } from './server.js'
 import { scanPorts } from './scanner.js'
+import { DASHBOARD_PORT_LINE } from './dashboard.js'
 
 const DEFAULT_PORT = 7575
 const MAX_PORT_TRIES = 10
@@ -42,6 +43,20 @@ async function startAction(opts: { port: string; open: boolean }) {
       console.error(`[warn] Could not open browser: ${msg}`)
     })
   }
+}
+
+async function dashboardAction(opts: { port: string }) {
+  const base = Number.parseInt(opts.port, 10)
+  if (!Number.isFinite(base) || base < 1 || base > 65535) {
+    console.error(`Invalid port: ${opts.port}. Must be 1–65535.`)
+    process.exit(1)
+  }
+  const { port, close } = await startWithAutoPort(base)
+  // Single machine-readable line the tray's dashboard controller parses; keep the format stable.
+  process.stdout.write(`${DASHBOARD_PORT_LINE}${port}\n`)
+  const shutdown = () => { close(); process.exit(0) }
+  process.on('SIGINT', shutdown)
+  process.on('SIGTERM', shutdown)
 }
 
 async function lsAction(opts: { dev: boolean; all: boolean }) {
@@ -126,6 +141,12 @@ program
   .option('--all', 'Show all listeners, not just dev services', false)
   .option('--dev', 'Show only dev services (default)', true)
   .action(lsAction)
+
+program
+  .command('dashboard')
+  .description('Run only the dashboard server in the foreground (no browser)')
+  .option('-p, --port <port>', 'Preferred port (auto-increments if busy)', String(DEFAULT_PORT))
+  .action(dashboardAction)
 
 program
   .command('tray')
