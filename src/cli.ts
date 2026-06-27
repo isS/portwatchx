@@ -6,6 +6,7 @@ import { dirname } from 'node:path'
 import open from 'open'
 import Table from 'cli-table3'
 import chalk from 'chalk'
+import { installAgent, uninstallAgent } from './launchd.js'
 import { startServer } from './server.js'
 import { scanPorts } from './scanner.js'
 import { DASHBOARD_PORT_LINE, spawnDashboard, stopDashboard, type DashboardProc } from './dashboard.js'
@@ -164,12 +165,23 @@ async function trayAction(opts: { install?: boolean; uninstall?: boolean; foregr
 }
 
 async function installTrayAgent() {
-  console.error('not implemented yet')
-  process.exit(1)
+  const cliPath = realpathSync(process.argv[1])
+  try {
+    const path = await installAgent({
+      nodePath: process.execPath,
+      cliPath,
+      nodeBinDir: dirname(process.execPath),
+    })
+    console.log(`portwatchx tray installed as a LaunchAgent.\n  plist: ${path}\n  It will start now and after every reboot. Quit from the tray menu to stop it.`)
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err))
+    process.exit(1)
+  }
 }
+
 async function uninstallTrayAgent() {
-  console.error('not implemented yet')
-  process.exit(1)
+  const removed = await uninstallAgent()
+  console.log(removed ? 'portwatchx tray LaunchAgent removed.' : 'portwatchx tray was not installed.')
 }
 
 const program = new Command()
