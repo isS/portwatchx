@@ -168,7 +168,7 @@ export async function startTray(cb: TrayCallbacks): Promise<TrayHandle> {
         return
       }
       if (title === 'Quit') {
-        await cb.onQuit()
+        await cb.onQuit().catch(() => {})
       }
     })
   }
