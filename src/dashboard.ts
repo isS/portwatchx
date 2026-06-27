@@ -7,10 +7,11 @@ export type DashboardProc = { child: ChildProcess; url: string }
 /** Resolve with the port the dashboard child prints on stdout, or reject if it dies first. */
 export function awaitDashboardPort(child: ChildProcess): Promise<number> {
   return new Promise((resolve, reject) => {
+    if (!child.stdout) { reject(new Error('awaitDashboardPort requires child.stdout to be piped')); return }
     let buf = ''
     const onData = (d: Buffer) => {
       buf += d.toString()
-      const line = buf.split('\n').find(l => l.startsWith(DASHBOARD_PORT_LINE))
+      const line = buf.split('\n').slice(0, -1).find(l => l.startsWith(DASHBOARD_PORT_LINE))
       if (!line) return
       const port = Number(line.slice(DASHBOARD_PORT_LINE.length).trim())
       cleanup()

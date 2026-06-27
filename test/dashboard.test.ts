@@ -18,3 +18,13 @@ test('awaitDashboardPort rejects if the child exits before printing', async () =
   const child = spawn(process.execPath, ['-e', 'process.exit(3)'], { stdio: ['ignore', 'pipe', 'inherit'] })
   await assert.rejects(awaitDashboardPort(child), /exited/)
 })
+
+test('awaitDashboardPort rejects on a non-numeric port line', async () => {
+  const script = `process.stdout.write('${DASHBOARD_PORT_LINE}notaport\\n'); setInterval(() => {}, 1000)`
+  const child = spawn(process.execPath, ['-e', script], { stdio: ['ignore', 'pipe', 'inherit'] })
+  try {
+    await assert.rejects(awaitDashboardPort(child), /bad dashboard port line/)
+  } finally {
+    child.kill('SIGTERM')
+  }
+})
