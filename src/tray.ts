@@ -119,7 +119,7 @@ function buildMenu(data: ScanData) {
 // Port-row title looks like: "  3000  project-name [(self)]" — right-padded with U+2007.
 const PORT_ROW_RE = /^[ ]*(\d+) /
 
-/** Build tray menu data straight from the scanner. selfPid tags portwatchx's own dashboard row. */
+/** Build tray menu data straight from the scanner. selfPid is stored and later used by the menu builder to label portwatchx's own row. */
 export async function collectScanData(
   selfPid: number,
   scan: () => Promise<PortRow[]> = scanPorts,
