@@ -179,17 +179,15 @@ program
   .description('See which local dev project is using each TCP port.')
   .version('0.1.0')
 
+// Bare `portwatchx` with no subcommand → platform default (tray on macOS, dashboard elsewhere).
+program.action(defaultAction)
+
 program
-  .command('start', { isDefault: true })
-  .description('Default: macOS starts the tray; otherwise opens the dashboard in your browser')
+  .command('start')
+  .description('Start the dashboard and open it in your browser')
   .option('-p, --port <port>', 'Preferred port (auto-increments if busy)', String(DEFAULT_PORT))
   .option('--no-open', 'Do not open the browser automatically')
-  .action((opts: { port: string; open: boolean }) => {
-    // Bare `portwatchx` (no subcommand) → platform default.
-    // Explicit `portwatchx start [flags]` → always the dashboard+browser path.
-    const calledExplicitly = process.argv[2] === 'start'
-    return calledExplicitly ? startAction(opts) : defaultAction()
-  })
+  .action(startAction)
 
 program
   .command('ls')
