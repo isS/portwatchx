@@ -61,6 +61,11 @@ async function dashboardAction(opts: { port: string }) {
   process.on('SIGTERM', shutdown)
 }
 
+async function defaultAction() {
+  if (platform() === 'darwin') return trayAction({})
+  return startAction({ port: String(DEFAULT_PORT), open: true })
+}
+
 async function lsAction(opts: { dev: boolean; all: boolean }) {
   let rows = await scanPorts()
   if (!opts.all) rows = rows.filter(r => r.is_dev_service)
@@ -176,10 +181,15 @@ program
 
 program
   .command('start', { isDefault: true })
-  .description('Start the dashboard and open it in your browser')
+  .description('Default: macOS starts the tray; otherwise opens the dashboard in your browser')
   .option('-p, --port <port>', 'Preferred port (auto-increments if busy)', String(DEFAULT_PORT))
   .option('--no-open', 'Do not open the browser automatically')
-  .action(startAction)
+  .action((opts: { port: string; open: boolean }) => {
+    // Bare `portwatchx` (no subcommand) → platform default.
+    // Explicit `portwatchx start [flags]` → always the dashboard+browser path.
+    const calledExplicitly = process.argv[2] === 'start'
+    return calledExplicitly ? startAction(opts) : defaultAction()
+  })
 
 program
   .command('ls')
