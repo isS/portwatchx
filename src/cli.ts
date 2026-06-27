@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 import { Command } from 'commander'
 import { platform } from 'node:os'
+import { realpathSync } from 'node:fs'
+import { dirname } from 'node:path'
 import open from 'open'
 import Table from 'cli-table3'
 import chalk from 'chalk'
 import { startServer } from './server.js'
 import { scanPorts } from './scanner.js'
-import { DASHBOARD_PORT_LINE } from './dashboard.js'
+import { DASHBOARD_PORT_LINE, spawnDashboard, stopDashboard, type DashboardProc } from './dashboard.js'
 
 const DEFAULT_PORT = 7575
 const MAX_PORT_TRIES = 10
@@ -92,33 +94,70 @@ async function lsAction(opts: { dev: boolean; all: boolean }) {
   console.log(table.toString())
 }
 
-async function trayAction() {
+async function trayAction(opts: { install?: boolean; uninstall?: boolean; foreground?: boolean }) {
   if (platform() !== 'darwin') {
     console.error('Tray is macOS only. Use `portwatchx` or `portwatchx ls`.')
     process.exit(1)
   }
-  const { port } = await startWithAutoPort(DEFAULT_PORT)
-  const url = `http://127.0.0.1:${port}`
-  const { startTray, fetchScanData } = await import('./tray.js')
+  if (opts.install) return installTrayAgent()
+  if (opts.uninstall) return uninstallTrayAgent()
+
+  const { startTray, collectScanData } = await import('./tray.js')
+  const nodePath = process.execPath
+  const cliPath = realpathSync(process.argv[1])
+  let dash: DashboardProc | null = null
+  let handle: Awaited<ReturnType<typeof startTray>>
 
   const tick = async () => {
-    const data = await fetchScanData(url)
-    if (data) await handle.update(data)
+    const data = await collectScanData(dash?.child.pid ?? 0)
+    await handle.update(data)
   }
 
-  const handle = await startTray(url, tick)
+  const killDash = () => { if (dash) { stopDashboard(dash.child); dash = null } }
+
+  handle = await startTray({
+    onRefresh: tick,
+    isDashboardRunning: () => dash !== null,
+    onToggleDashboard: async () => {
+      if (dash) {
+        killDash()
+      } else {
+        dash = await spawnDashboard(nodePath, cliPath)
+        dash.child.once('exit', () => { dash = null; tick().catch(() => {}) })
+        const { default: open } = await import('open')
+        await open(dash.url).catch(() => {})
+      }
+      await tick()
+    },
+    onQuit: async () => {
+      killDash()
+      await handle.close()
+      process.exit(0)
+    },
+  })
+
   await tick()
   const timer = setInterval(tick, 5000)
 
   const shutdown = async () => {
     clearInterval(timer)
+    killDash()
     await handle.close()
     process.exit(0)
   }
   process.on('SIGINT', shutdown)
   process.on('SIGTERM', shutdown)
 
-  console.log(`portwatchx tray running · dashboard at ${url}`)
+  console.log('portwatchx tray running')
+}
+
+async function installTrayAgent() {
+  console.error('not implemented yet')
+  process.exit(1)
+}
+async function uninstallTrayAgent() {
+  console.error('not implemented yet')
+  process.exit(1)
 }
 
 const program = new Command()
@@ -151,6 +190,9 @@ program
 program
   .command('tray')
   .description('Start a menu-bar icon (macOS only)')
+  .option('--install', 'Install as a LaunchAgent that survives reboot')
+  .option('--uninstall', 'Remove the LaunchAgent')
+  .option('--foreground', 'Run the tray in this terminal (does not install)')
   .action(trayAction)
 
 program.parseAsync()
