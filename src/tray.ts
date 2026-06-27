@@ -1,4 +1,5 @@
 import * as SysTrayModule from 'systray2'
+import { scanPorts, type PortRow } from './scanner.js'
 // systray2 is a CJS module with __esModule:true; under Node ESM interop the class
 // ends up at module.default.default (the namespace wrapper adds one extra level).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -118,6 +119,20 @@ function buildMenu(data: ScanData) {
 // Port-row title looks like: "  3000  project-name [(self)]" — right-padded with U+2007.
 const PORT_ROW_RE = /^[ ]*(\d+) /
 
+/** Build tray menu data straight from the scanner. selfPid tags portwatchx's own dashboard row. */
+export async function collectScanData(
+  selfPid: number,
+  scan: () => Promise<PortRow[]> = scanPorts,
+): Promise<ScanData> {
+  const ports = await scan()
+  return {
+    ports,
+    total: ports.length,
+    dev_services: ports.filter(p => p.is_dev_service).length,
+    self_pid: selfPid,
+  }
+}
+
 export async function startTray(dashboardUrl: string, refresh: () => Promise<void>): Promise<TrayHandle> {
   // We don't trust systray2's update-menu to redraw items reliably on macOS, so each tick
   // tears down the previous SysTray instance and creates a fresh one. The icon is the same,
@@ -179,22 +194,5 @@ export async function startTray(dashboardUrl: string, refresh: () => Promise<voi
       try { await old.kill(false) } catch { /* ignore */ }
     },
     close: async () => current.kill(true),
-  }
-}
-
-export async function fetchScanData(url: string): Promise<ScanData | null> {
-  try {
-    const res = await fetch(`${url}/api/ports`)
-    const body = await res.json() as any
-    if (!body?.success) return null
-    const d = body.data
-    return {
-      ports: d.ports ?? [],
-      total: d.total ?? 0,
-      dev_services: d.dev_services ?? 0,
-      self_pid: d.self_pid ?? 0,
-    }
-  } catch {
-    return null
   }
 }
