@@ -104,9 +104,16 @@ async function trayAction(opts: { install?: boolean; uninstall?: boolean; foregr
 
   const { startTray, collectScanData } = await import('./tray.js')
   const nodePath = process.execPath
-  const cliPath = realpathSync(process.argv[1])
+  let cliPath: string
+  try {
+    cliPath = realpathSync(process.argv[1])
+  } catch {
+    console.error('Could not resolve the portwatchx executable path.')
+    process.exit(1)
+  }
   let dash: DashboardProc | null = null
   let handle: Awaited<ReturnType<typeof startTray>>
+  let timer: ReturnType<typeof setInterval> | undefined
 
   const tick = async () => {
     const data = await collectScanData(dash?.child.pid ?? 0)
@@ -124,12 +131,12 @@ async function trayAction(opts: { install?: boolean; uninstall?: boolean; foregr
       } else {
         dash = await spawnDashboard(nodePath, cliPath)
         dash.child.once('exit', () => { dash = null; tick().catch(() => {}) })
-        const { default: open } = await import('open')
         await open(dash.url).catch(() => {})
       }
       await tick()
     },
     onQuit: async () => {
+      clearInterval(timer)
       killDash()
       await handle.close()
       process.exit(0)
@@ -137,7 +144,7 @@ async function trayAction(opts: { install?: boolean; uninstall?: boolean; foregr
   })
 
   await tick()
-  const timer = setInterval(tick, 5000)
+  timer = setInterval(tick, 5000)
 
   const shutdown = async () => {
     clearInterval(timer)
