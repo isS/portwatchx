@@ -149,8 +149,8 @@ async function trayAction(opts: { install?: boolean; uninstall?: boolean; foregr
     },
   })
 
-  await tick()
-  timer = setInterval(tick, 5000)
+  await tick().catch(() => {})
+  timer = setInterval(() => { tick().catch(() => {}) }, 5000)
 
   const shutdown = async () => {
     clearInterval(timer)
