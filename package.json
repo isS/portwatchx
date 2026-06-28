@@ -12,6 +12,7 @@
     "macos"
   ],
   "license": "MIT",
+  "publishConfig": { "access": "public" },
   "type": "module",
   "author": "PortwatchX contributors",
   "homepage": "https://github.com/isS/portwatchx#readme",
@@ -31,7 +32,6 @@
   "bin": {
     "portwatchx": "./dist/cli.js"
   },
-  "private": true,
   "engines": {
     "node": ">=20"
   },
@@ -44,7 +44,7 @@
     "build:ui": "tsc -p tsconfig.ui.json && vite build",
     "dev": "tsx src/cli.ts",
     "dev:ui": "vite",
-    "test": "node --import tsx --test test/cli-guard.test.ts test/scanner.test.ts test/server.test.ts"
+    "test": "node --import tsx --test test/cli-guard.test.ts test/scanner.test.ts test/server.test.ts test/dashboard.test.ts test/tray.test.ts test/launchd.test.ts"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
