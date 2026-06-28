@@ -1,12 +1,17 @@
 import { execFile as execFileCb } from 'node:child_process'
 import { promisify } from 'node:util'
-import { mkdir, writeFile, rm, access } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
+import { mkdir, writeFile, rm } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join, dirname } from 'node:path'
 
 const execFile = promisify(execFileCb)
 
 export const LABEL = 'com.portwatchx.tray'
+
+function xmlEscape(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
 
 export type Runner = (cmd: string, args: string[]) => Promise<void>
 const defaultRunner: Runner = async (cmd, args) => { await execFile(cmd, args) }
@@ -24,8 +29,8 @@ export function buildPlist(o: { nodePath: string; cliPath: string; nodeBinDir: s
     <string>${LABEL}</string>
     <key>ProgramArguments</key>
     <array>
-        <string>${o.nodePath}</string>
-        <string>${o.cliPath}</string>
+        <string>${xmlEscape(o.nodePath)}</string>
+        <string>${xmlEscape(o.cliPath)}</string>
         <string>tray</string>
     </array>
     <key>RunAtLoad</key>
@@ -36,13 +41,13 @@ export function buildPlist(o: { nodePath: string; cliPath: string; nodeBinDir: s
         <false/>
     </dict>
     <key>StandardOutPath</key>
-    <string>${o.logDir}/tray.log</string>
+    <string>${xmlEscape(o.logDir)}/tray.log</string>
     <key>StandardErrorPath</key>
-    <string>${o.logDir}/tray.err.log</string>
+    <string>${xmlEscape(o.logDir)}/tray.err.log</string>
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <string>${o.nodeBinDir}:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <string>${xmlEscape(o.nodeBinDir)}:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     </dict>
 </dict>
 </plist>
@@ -88,13 +93,9 @@ export async function installAgent(
 
 export async function uninstallAgent(run: Runner = defaultRunner, home: string = homedir()): Promise<boolean> {
   const path = plistPath(home)
-  // Use plist presence on disk as the authoritative "was it installed" indicator.
-  // This is more reliable than launchctl state, which may lag (e.g. after a reboot without load).
-  let plistExists = false
-  try { await access(path); plistExists = true } catch { /* not installed */ }
-  if (plistExists) {
-    try { await run('launchctl', ['bootout', `gui/${uid()}/${LABEL}`]) } catch { /* already gone */ }
-    await rm(path, { force: true })
-  }
-  return plistExists
+  const existed = existsSync(path)
+  // Attempt bootout regardless of plist presence, so a loaded-but-fileless agent is still unloaded.
+  try { await run('launchctl', ['bootout', `gui/${uid()}/${LABEL}`]) } catch { /* not loaded */ }
+  await rm(path, { force: true })
+  return existed
 }

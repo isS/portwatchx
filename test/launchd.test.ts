@@ -16,7 +16,7 @@ test('buildPlist embeds absolute node + cli paths and prepends node bin dir to P
     nodeBinDir: '/Users/x/.nvm/versions/node/v22.0.0/bin',
     logDir: '/Users/x/Library/Logs/portwatchx',
   })
-  assert.match(xml, /<string>com\.portwatchx\.tray<\/string>/)
+  assert.ok(xml.includes(`<string>${LABEL}</string>`))
   assert.match(xml, /<string>\/Users\/x\/\.nvm\/versions\/node\/v22\.0\.0\/bin\/node<\/string>\s*<string>\/Users\/x\/app\/dist\/cli\.js<\/string>\s*<string>tray<\/string>/)
   assert.match(xml, /<key>PATH<\/key>\s*<string>\/Users\/x\/\.nvm\/versions\/node\/v22\.0\.0\/bin:/)
   assert.match(xml, /<key>SuccessfulExit<\/key>\s*<false\/>/)
@@ -67,4 +67,11 @@ test('uninstallAgent boots out and removes the plist', async () => {
   const removed = await uninstallAgent(run, home)
   assert.strictEqual(removed, true)
   assert.ok(calls.some(c => c.cmd === 'launchctl' && c.args[0] === 'bootout'))
+})
+
+test('uninstallAgent returns false when nothing is installed', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'pwx-home-'))
+  const { run } = fakeRunner(false)
+  const removed = await uninstallAgent(run, home)
+  assert.strictEqual(removed, false)
 })

@@ -180,8 +180,13 @@ async function installTrayAgent() {
 }
 
 async function uninstallTrayAgent() {
-  const removed = await uninstallAgent()
-  console.log(removed ? 'portwatchx tray LaunchAgent removed.' : 'portwatchx tray was not installed.')
+  try {
+    const removed = await uninstallAgent()
+    console.log(removed ? 'portwatchx tray LaunchAgent removed.' : 'portwatchx tray was not installed.')
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err))
+    process.exit(1)
+  }
 }
 
 const program = new Command()
