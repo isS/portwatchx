@@ -29,7 +29,7 @@ What this does:
 ## Usage
 
 ```sh
-portwatchx           # start the dashboard and open it in your browser
+portwatchx              # macOS: start the menu-bar tray · other: open the dashboard in your browser
 portwatchx ls        # print the port table to your terminal (macOS + Linux)
 portwatchx tray      # menu-bar icon for quick access (macOS only)
 ```
