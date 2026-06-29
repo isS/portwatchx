@@ -10,6 +10,7 @@ import { installAgent, uninstallAgent } from './launchd.js'
 import { startServer } from './server.js'
 import { scanPorts } from './scanner.js'
 import { DASHBOARD_PORT_LINE, spawnDashboard, stopDashboard, type DashboardProc } from './dashboard.js'
+import { acquireSingleInstanceLock, releaseSingleInstanceLock } from './single-instance.js'
 
 const DEFAULT_PORT = 7575
 const MAX_PORT_TRIES = 10
@@ -107,6 +108,13 @@ async function trayAction(opts: { install?: boolean; uninstall?: boolean; foregr
   }
   if (opts.install) return installTrayAgent()
   if (opts.uninstall) return uninstallTrayAgent()
+
+  if (!acquireSingleInstanceLock()) {
+    console.error('portwatchx tray is already running.')
+    process.exit(0)
+  }
+  // Released on every exit path (Quit, SIGINT/SIGTERM, crash) since they all reach process exit.
+  process.on('exit', () => releaseSingleInstanceLock())
 
   const { startTray, collectScanData } = await import('./tray.js')
   const nodePath = process.execPath
