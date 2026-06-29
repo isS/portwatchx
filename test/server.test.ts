@@ -1,5 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert'
+import { spawn } from 'node:child_process'
+import { once } from 'node:events'
 import { createApp } from '../src/server.ts'
 import type { PortRow } from '../src/scanner.ts'
 
@@ -31,4 +33,46 @@ test('GET /api/ports handles scanner errors', async () => {
   assert.strictEqual(res.status, 500)
   const body = await res.json() as any
   assert.strictEqual(body.success, false)
+})
+
+function killReq(body: unknown) {
+  return new Request('http://x/api/kill', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+test('POST /api/kill rejects an invalid pid', async () => {
+  const app = createApp(async () => stubRows)
+  const res = await app.request(killReq({ pid: 'abc' }))
+  assert.strictEqual(res.status, 400)
+  assert.strictEqual((await res.json() as any).success, false)
+})
+
+test('POST /api/kill refuses to kill itself', async () => {
+  const app = createApp(async () => stubRows)
+  const res = await app.request(killReq({ pid: process.pid }))
+  assert.strictEqual(res.status, 400)
+  assert.match((await res.json() as any).error, /itself/)
+})
+
+test('POST /api/kill reports a missing process', async () => {
+  const app = createApp(async () => stubRows)
+  // pid 0x7fffffff is virtually guaranteed not to exist
+  const res = await app.request(killReq({ pid: 2147483647 }))
+  assert.strictEqual(res.status, 404)
+  assert.strictEqual((await res.json() as any).success, false)
+})
+
+test('POST /api/kill terminates a live process', async () => {
+  const app = createApp(async () => stubRows)
+  const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'])
+  const exited = once(child, 'exit')
+  const res = await app.request(killReq({ pid: child.pid }))
+  assert.strictEqual(res.status, 200)
+  assert.strictEqual((await res.json() as any).success, true)
+  const [code, signal] = await exited
+  assert.strictEqual(signal, 'SIGTERM')
+  assert.strictEqual(code, null)
 })

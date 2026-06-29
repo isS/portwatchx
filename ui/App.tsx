@@ -121,6 +121,7 @@ export function App() {
             onSort={toggleSort}
             hiddenCols={hiddenCols}
             selfPid={selfPid}
+            onKilled={refresh}
           />
         )}
       </div>

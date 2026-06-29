@@ -36,6 +36,34 @@ export function createApp(scan: ScanFn = scanPorts) {
     }
   })
 
+  app.post('/api/kill', async (c) => {
+    let body: { pid?: unknown; signal?: unknown }
+    try {
+      body = await c.req.json()
+    } catch {
+      return c.json({ success: false, error: 'invalid JSON body' }, 400)
+    }
+    const pid = Number(body.pid)
+    if (!Number.isInteger(pid) || pid <= 0) {
+      return c.json({ success: false, error: 'invalid pid' }, 400)
+    }
+    if (pid === process.pid) {
+      return c.json({ success: false, error: 'refusing to kill portwatchx itself' }, 400)
+    }
+    const signal = body.signal === 'SIGKILL' ? 'SIGKILL' : 'SIGTERM'
+    try {
+      process.kill(pid, signal)
+      return c.json({ success: true, data: { pid, signal } })
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code
+      const msg =
+        code === 'ESRCH' ? `no such process (pid ${pid})` :
+        code === 'EPERM' ? `permission denied (pid ${pid})` :
+        err instanceof Error ? err.message : 'kill failed'
+      return c.json({ success: false, error: msg }, code === 'ESRCH' ? 404 : 403)
+    }
+  })
+
   // Static UI
   const here = dirname(fileURLToPath(import.meta.url))
   const uiRoot = join(here, 'ui')
