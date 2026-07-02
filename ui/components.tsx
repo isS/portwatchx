@@ -2,9 +2,9 @@ import { useEffect, useState, type ReactNode } from 'react'
 import * as Popover from '@radix-ui/react-popover'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { useTheme } from 'next-themes'
-import { Check, ExternalLink, FolderOpen, Moon, Settings, Sun, Terminal } from 'lucide-react'
+import { Check, ExternalLink, FolderOpen, Moon, Settings, Sun, Terminal, Skull } from 'lucide-react'
 import type { ColumnKey, PortRow, SortDir, SortKey } from './lib.ts'
-import { copyToClipboard, formatUptime } from './lib.ts'
+import { copyToClipboard, formatUptime, killProcess } from './lib.ts'
 
 export function MetricsStrip({
   total, dev, projects, refreshedAt, loaded, onRefresh,
@@ -165,7 +165,7 @@ export function Toolbar({
 }
 
 export function PortsTable({
-  rows, sortKey, sortDir, onSort, hiddenCols, selfPid,
+  rows, sortKey, sortDir, onSort, hiddenCols, selfPid, onKilled,
 }: {
   rows: PortRow[]
   sortKey: SortKey
@@ -173,18 +173,42 @@ export function PortsTable({
   onSort: (key: SortKey) => void
   hiddenCols: Set<ColumnKey>
   selfPid: number
+  onKilled: () => void
 }) {
   const [copied, setCopied] = useState<string>('')
+  const [armed, setArmed] = useState<string>('')
+  const [killing, setKilling] = useState<string>('')
+  const [killErr, setKillErr] = useState<string>('')
   async function copy(key: string, text: string) {
     await copyToClipboard(text)
     setCopied(key)
     setTimeout(() => setCopied(''), 900)
+  }
+  async function kill(key: string, pid: number) {
+    if (armed !== key) {
+      setKillErr('')
+      setArmed(key)
+      setTimeout(() => setArmed(a => (a === key ? '' : a)), 3000)
+      return
+    }
+    setArmed('')
+    setKilling(key)
+    try {
+      await killProcess(pid)
+      onKilled()
+    } catch (e) {
+      setKillErr(e instanceof Error ? e.message : 'kill failed')
+    } finally {
+      setKilling('')
+    }
   }
   if (rows.length === 0) {
     return <div className="mt-8 text-sm text-neutral-500 text-center py-10">No matching ports.</div>
   }
   const show = (k: ColumnKey) => !hiddenCols.has(k)
   return (
+    <>
+    {killErr && <div className="mt-4 text-sm text-red-500">kill failed: {killErr}</div>}
     <table className="mt-6 w-full text-sm">
       <thead className="text-neutral-500 uppercase text-xs tracking-wider">
         <tr>
@@ -273,12 +297,33 @@ export function PortsTable({
                       : <Terminal size={14} strokeWidth={2} />}
                   </button>
                 </Tip>
+                {!isSelf && (
+                  <Tip content={
+                    armed === killKey ? `Confirm kill ${r.pid}` :
+                    killing === killKey ? 'Killing…' :
+                    `Kill process ${r.pid} (SIGTERM)`
+                  }>
+                    <button
+                      onClick={() => kill(killKey, r.pid)}
+                      disabled={killing === killKey}
+                      aria-label={armed === killKey ? `Confirm kill ${r.pid}` : `Kill process ${r.pid}`}
+                      className={`p-1.5 ml-0.5 rounded transition-colors disabled:opacity-50 ${
+                        armed === killKey
+                          ? 'bg-red-500 text-white hover:bg-red-600'
+                          : 'text-neutral-400 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400'
+                      }`}
+                    >
+                      <Skull size={14} strokeWidth={2} />
+                    </button>
+                  </Tip>
+                )}
               </td>
             </tr>
           )
         })}
       </tbody>
     </table>
+    </>
   )
 }
 

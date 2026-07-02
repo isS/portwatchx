@@ -1,4 +1,5 @@
 import * as SysTrayModule from 'systray2'
+import { scanPorts, type PortRow } from './scanner.js'
 // systray2 is a CJS module with __esModule:true; under Node ESM interop the class
 // ends up at module.default.default (the namespace wrapper adds one extra level).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -38,6 +39,13 @@ export type TrayHandle = {
   close(): Promise<void>
 }
 
+export type TrayCallbacks = {
+  onRefresh: () => Promise<void>
+  onToggleDashboard: () => Promise<void>
+  isDashboardRunning: () => boolean
+  onQuit: () => Promise<void>
+}
+
 function formatRow(p: PortLike, selfPid: number): string {
   const label = p.project_name || p.process || '?'
   const trimmed = label.length > NAME_WIDTH ? label.slice(0, NAME_WIDTH - 1) + '…' : label
@@ -46,7 +54,7 @@ function formatRow(p: PortLike, selfPid: number): string {
   return `${portStr}  ${trimmed}${tag}`
 }
 
-function buildMenu(data: ScanData) {
+function buildMenu(data: ScanData, dashboardRunning: boolean) {
   const dev = data.ports.filter(p => p.is_dev_service)
   const inline = dev.slice(0, MAX_DEV_INLINE)
   const overflow = dev.length - inline.length
@@ -98,7 +106,10 @@ function buildMenu(data: ScanData) {
   })
   items.push(SysTray.separator)
 
-  items.push({ title: 'Open Dashboard', tooltip: '', checked: false, enabled: true })
+  items.push({
+    title: dashboardRunning ? 'Stop Dashboard' : 'Open Dashboard',
+    tooltip: '', checked: false, enabled: true,
+  })
   items.push({ title: 'Refresh', tooltip: '', checked: false, enabled: true })
   items.push(SysTray.separator)
   items.push({ title: 'Quit', tooltip: '', checked: false, enabled: true })
@@ -118,12 +129,26 @@ function buildMenu(data: ScanData) {
 // Port-row title looks like: "  3000  project-name [(self)]" — right-padded with U+2007.
 const PORT_ROW_RE = /^[ ]*(\d+) /
 
-export async function startTray(dashboardUrl: string, refresh: () => Promise<void>): Promise<TrayHandle> {
-  // We don't trust systray2's update-menu to redraw items reliably on macOS, so each tick
-  // tears down the previous SysTray instance and creates a fresh one. The icon is the same,
-  // so the user perceives this as "menu just changed" with no visible flicker on the icon itself.
+/** Build tray menu data straight from the scanner. selfPid is stored and later used by the menu builder to label portwatchx's own row. */
+export async function collectScanData(
+  selfPid: number,
+  scan: () => Promise<PortRow[]> = scanPorts,
+): Promise<ScanData> {
+  const ports = await scan()
+  return {
+    ports,
+    total: ports.length,
+    dev_services: ports.filter(p => p.is_dev_service).length,
+    self_pid: selfPid,
+  }
+}
+
+export async function startTray(cb: TrayCallbacks): Promise<TrayHandle> {
+  // systray2's update-menu doesn't reliably redraw on macOS, so each change tears down the
+  // previous SysTray instance and builds a fresh one. Icon is identical → no visible flicker.
   let current: any = null
   let lastData: ScanData | null = null
+  let lastRunning = false
 
   const wireClicks = (tray: any) => {
     tray.onClick(async (action: any) => {
@@ -134,67 +159,48 @@ export async function startTray(dashboardUrl: string, refresh: () => Promise<voi
         await open(`http://localhost:${portMatch[1]}`).catch(() => {})
         return
       }
-      if (title === 'Open Dashboard') {
-        const { default: open } = await import('open')
-        await open(dashboardUrl).catch(() => {})
+      if (title === 'Open Dashboard' || title === 'Stop Dashboard') {
+        await cb.onToggleDashboard().catch(() => {})
         return
       }
       if (title === 'Refresh') {
-        await refresh().catch(() => {})
+        await cb.onRefresh().catch(() => {})
         return
       }
       if (title === 'Quit') {
-        await tray.kill(true)
-        process.exit(0)
+        await cb.onQuit().catch(() => {})
       }
     })
   }
 
   const initial: ScanData = { ports: [], total: 0, dev_services: 0, self_pid: 0 }
-  current = new SysTray({ menu: buildMenu(initial), copyDir: true })
+  current = new SysTray({ menu: buildMenu(initial, false), copyDir: true })
   await current.ready()
   wireClicks(current)
   lastData = initial
 
+  const sameData = (a: ScanData, b: ScanData) =>
+    a.dev_services === b.dev_services &&
+    a.total === b.total &&
+    a.ports.length === b.ports.length &&
+    a.ports.every((p, i) => {
+      const q = b.ports[i]
+      return q && p.port === q.port && p.pid === q.pid && p.is_dev_service === q.is_dev_service && p.project_name === q.project_name
+    })
+
   return {
     update: async (data: ScanData) => {
-      if (lastData
-        && lastData.dev_services === data.dev_services
-        && lastData.total === data.total
-        && lastData.ports.length === data.ports.length
-        && lastData.ports.every((p, i) => {
-          const q = data.ports[i]
-          return q && p.port === q.port && p.pid === q.pid && p.is_dev_service === q.is_dev_service && p.project_name === q.project_name
-        })
-      ) {
-        return
-      }
-
-      const next = new SysTray({ menu: buildMenu(data), copyDir: true })
+      const running = cb.isDashboardRunning()
+      if (lastData && running === lastRunning && sameData(lastData, data)) return
+      const next = new SysTray({ menu: buildMenu(data, running), copyDir: true })
       await next.ready()
       wireClicks(next)
       const old = current
       current = next
       lastData = data
+      lastRunning = running
       try { await old.kill(false) } catch { /* ignore */ }
     },
     close: async () => current.kill(true),
-  }
-}
-
-export async function fetchScanData(url: string): Promise<ScanData | null> {
-  try {
-    const res = await fetch(`${url}/api/ports`)
-    const body = await res.json() as any
-    if (!body?.success) return null
-    const d = body.data
-    return {
-      ports: d.ports ?? [],
-      total: d.total ?? 0,
-      dev_services: d.dev_services ?? 0,
-      self_pid: d.self_pid ?? 0,
-    }
-  } catch {
-    return null
   }
 }

@@ -34,6 +34,16 @@ export async function fetchPorts(): Promise<PortsResponse['data']> {
   return body.data
 }
 
+export async function killProcess(pid: number, signal: 'SIGTERM' | 'SIGKILL' = 'SIGTERM'): Promise<void> {
+  const res = await fetch('/api/kill', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ pid, signal }),
+  })
+  const body = (await res.json().catch(() => null)) as { success: boolean; error?: string } | null
+  if (!res.ok || !body?.success) throw new Error(body?.error || `HTTP ${res.status}`)
+}
+
 export async function copyToClipboard(text: string): Promise<void> {
   await navigator.clipboard.writeText(text)
 }
