@@ -1,6 +1,6 @@
 {
   "name": "portwatchx",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "See which local dev project is using each TCP port on your machine.",
   "keywords": [
     "port",
@@ -12,7 +12,9 @@
     "macos"
   ],
   "license": "MIT",
-  "publishConfig": { "access": "public" },
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "author": "PortwatchX contributors",
   "homepage": "https://github.com/isS/portwatchx#readme",
